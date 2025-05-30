@@ -31,7 +31,7 @@ interface Recibo {
     direccion: string;
   };
   monto: string;
-  tipoMoneda: string;
+  moneda: 'USD' | 'BS';
   metodoPago: string;
   estado: 'pendiente' | 'pagado' | 'cancelado';
 }
@@ -46,6 +46,7 @@ const JHGestionRecibos = () => {
   const [reciboEditando, setReciboEditando] = useState<Recibo | null>(null);
   const [reciboCompartir, setReciboCompartir] = useState<Recibo | null>(null);
   const [telefono, setTelefono] = useState('');
+  const [tasaCambio, setTasaCambio] = useState<{tasa: string, moneda: string} | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const [nuevoRecibo, setNuevoRecibo] = useState({
@@ -55,18 +56,38 @@ const JHGestionRecibos = () => {
       direccion: ''
     },
     monto: '',
-    tipoMoneda: 'USD',
+    moneda: 'USD' as 'USD' | 'BS',
     metodoPago: 'efectivo'
   });
 
   useEffect(() => {
     const recibosGuardados = JSON.parse(localStorage.getItem('jhRecibos') || '[]');
     setRecibos(recibosGuardados);
+    
+    const tasa = localStorage.getItem('tasaCambio');
+    if (tasa) {
+      setTasaCambio(JSON.parse(tasa));
+    }
   }, []);
 
   const guardarRecibos = (nuevosRecibos: Recibo[]) => {
     localStorage.setItem('jhRecibos', JSON.stringify(nuevosRecibos));
     setRecibos(nuevosRecibos);
+  };
+
+  const convertirMoneda = (monto: string, monedaOrigen: 'USD' | 'BS', monedaDestino: 'USD' | 'BS') => {
+    if (!tasaCambio || monedaOrigen === monedaDestino) return parseFloat(monto);
+    
+    const valor = parseFloat(monto);
+    const tasa = parseFloat(tasaCambio.tasa);
+    
+    if (monedaOrigen === 'USD' && monedaDestino === 'BS') {
+      return valor * tasa;
+    } else if (monedaOrigen === 'BS' && monedaDestino === 'USD') {
+      return valor / tasa;
+    }
+    
+    return valor;
   };
 
   const generarNumeroPedido = () => {
@@ -92,7 +113,7 @@ const JHGestionRecibos = () => {
       fechaEmision: new Date().toLocaleDateString(),
       cliente: nuevoRecibo.cliente,
       monto: nuevoRecibo.monto,
-      tipoMoneda: nuevoRecibo.tipoMoneda,
+      moneda: nuevoRecibo.moneda,
       metodoPago: nuevoRecibo.metodoPago,
       estado: 'pendiente'
     };
@@ -101,14 +122,14 @@ const JHGestionRecibos = () => {
     guardarRecibos(nuevosRecibos);
     
     toast({
-      title: "Recibo creado",
+      title: "Recibo creado exitosamente",
       description: `Recibo N° ${recibo.numeroPedido} ha sido generado`,
     });
 
     setNuevoRecibo({
       cliente: { nombre: '', contacto: '', direccion: '' },
       monto: '',
-      tipoMoneda: 'USD',
+      moneda: 'USD',
       metodoPago: 'efectivo'
     });
     setIsCrearOpen(false);
@@ -149,84 +170,156 @@ const JHGestionRecibos = () => {
       const ctx = canvas.getContext('2d');
       if (!ctx) return resolve('');
 
-      // Configurar canvas
+      // Configurar canvas con dimensiones similares al recibo de referencia
       canvas.width = 400;
-      canvas.height = 600;
+      canvas.height = 700;
 
-      // Fondo
+      // Fondo blanco
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Header
-      ctx.fillStyle = '#2563eb';
-      ctx.fillRect(0, 0, canvas.width, 80);
+      // Header con círculo verde de check
+      ctx.fillStyle = '#10b981';
+      ctx.beginPath();
+      ctx.arc(canvas.width / 2, 60, 25, 0, 2 * Math.PI);
+      ctx.fill();
 
-      // Título
-      ctx.fillStyle = '#ffffff';
+      // Check mark
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(canvas.width / 2 - 8, 60);
+      ctx.lineTo(canvas.width / 2 - 2, 66);
+      ctx.lineTo(canvas.width / 2 + 8, 54);
+      ctx.stroke();
+
+      // Título principal
+      ctx.fillStyle = '#1f2937';
       ctx.font = 'bold 24px Arial';
       ctx.textAlign = 'center';
-      ctx.fillText('RECIBO DE PAGO', canvas.width / 2, 35);
+      ctx.fillText('¡Gracias por tu compra!', canvas.width / 2, 120);
 
-      ctx.font = '14px Arial';
-      ctx.fillText('JH Control System', canvas.width / 2, 60);
-
-      // Contenido
-      ctx.fillStyle = '#000000';
-      ctx.textAlign = 'left';
       ctx.font = '16px Arial';
+      ctx.fillStyle = '#6b7280';
+      ctx.fillText('Tu pedido ha sido procesado correctamente.', canvas.width / 2, 145);
 
-      let y = 120;
-      const lineHeight = 25;
-
-      // Información del recibo
+      // Sección de resumen del pedido
+      let y = 190;
+      ctx.fillStyle = '#1f2937';
       ctx.font = 'bold 18px Arial';
-      ctx.fillText('Información del Recibo', 20, y);
-      y += lineHeight + 10;
+      ctx.textAlign = 'left';
+      ctx.fillText('📋 Resumen del Pedido', 30, y);
 
+      y += 40;
       ctx.font = '14px Arial';
-      ctx.fillText(`N° Pedido: ${recibo.numeroPedido}`, 20, y);
-      y += lineHeight;
+      ctx.fillStyle = '#4b5563';
 
-      ctx.fillText(`Fecha: ${recibo.fechaEmision}`, 20, y);
-      y += lineHeight;
+      // Número de pedido
+      ctx.fillText('Número de Pedido:', 30, y);
+      ctx.fillStyle = '#1f2937';
+      ctx.font = 'bold 14px Arial';
+      ctx.fillText(recibo.numeroPedido, 300, y);
 
-      ctx.fillText(`Monto: ${recibo.monto} ${recibo.tipoMoneda}`, 20, y);
-      y += lineHeight;
+      y += 25;
+      ctx.font = '14px Arial';
+      ctx.fillStyle = '#4b5563';
+      ctx.fillText('Fecha:', 30, y);
+      ctx.fillStyle = '#1f2937';
+      ctx.font = 'bold 14px Arial';
+      ctx.fillText(recibo.fechaEmision, 300, y);
 
-      ctx.fillText(`Método de Pago: ${recibo.metodoPago}`, 20, y);
-      y += lineHeight + 20;
+      y += 25;
+      ctx.font = '14px Arial';
+      ctx.fillStyle = '#4b5563';
+      ctx.fillText('Estado:', 30, y);
+      ctx.fillStyle = recibo.estado === 'pagado' ? '#10b981' : 
+                      recibo.estado === 'cancelado' ? '#ef4444' : '#f59e0b';
+      ctx.font = 'bold 14px Arial';
+      
+      // Badge para el estado
+      const estadoTexto = recibo.estado === 'pagado' ? 'Pagado' :
+                         recibo.estado === 'cancelado' ? 'Cancelado' : 'En proceso';
+      
+      ctx.fillStyle = recibo.estado === 'pagado' ? '#dcfce7' :
+                      recibo.estado === 'cancelado' ? '#fee2e2' : '#fef3c7';
+      ctx.fillRect(280, y - 15, 90, 20);
+      
+      ctx.fillStyle = recibo.estado === 'pagado' ? '#166534' :
+                      recibo.estado === 'cancelado' ? '#991b1b' : '#92400e';
+      ctx.font = 'bold 12px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(estadoTexto, 325, y - 2);
 
-      // Información del cliente
+      y += 35;
+      ctx.textAlign = 'left';
+      ctx.font = '14px Arial';
+      ctx.fillStyle = '#4b5563';
+      ctx.fillText('Total:', 30, y);
+      ctx.fillStyle = '#1f2937';
       ctx.font = 'bold 18px Arial';
-      ctx.fillText('Datos del Cliente', 20, y);
-      y += lineHeight + 10;
-
-      ctx.font = '14px Arial';
-      ctx.fillText(`Cliente: ${recibo.cliente.nombre}`, 20, y);
-      y += lineHeight;
-
-      ctx.fillText(`Contacto: ${recibo.cliente.contacto}`, 20, y);
-      y += lineHeight;
-
-      if (recibo.cliente.direccion) {
-        ctx.fillText(`Dirección: ${recibo.cliente.direccion}`, 20, y);
-        y += lineHeight;
+      
+      // Mostrar monto en ambas monedas
+      const montoUSD = convertirMoneda(recibo.monto, recibo.moneda, 'USD');
+      const montoBS = convertirMoneda(recibo.monto, recibo.moneda, 'BS');
+      
+      if (recibo.moneda === 'USD') {
+        ctx.fillText(`$/ ${parseFloat(recibo.monto).toFixed(2)}`, 260, y);
+        if (tasaCambio) {
+          ctx.font = '12px Arial';
+          ctx.fillStyle = '#6b7280';
+          ctx.fillText(`(${tasaCambio.moneda} ${montoBS.toFixed(2)})`, 260, y + 18);
+        }
+      } else {
+        ctx.fillText(`${tasaCambio?.moneda || 'BS'} ${parseFloat(recibo.monto).toFixed(2)}`, 240, y);
+        ctx.font = '12px Arial';
+        ctx.fillStyle = '#6b7280';
+        ctx.fillText(`($/ ${montoUSD.toFixed(2)})`, 240, y + 18);
       }
 
-      y += 30;
+      // Datos del cliente
+      y += 70;
+      ctx.fillStyle = '#1f2937';
+      ctx.font = 'bold 18px Arial';
+      ctx.fillText('👤 Datos de Envío', 30, y);
 
-      // Estado
-      ctx.font = 'bold 16px Arial';
-      ctx.fillStyle = recibo.estado === 'pagado' ? '#16a34a' : 
-                      recibo.estado === 'cancelado' ? '#dc2626' : '#ea580c';
-      ctx.textAlign = 'center';
-      ctx.fillText(`Estado: ${recibo.estado.toUpperCase()}`, canvas.width / 2, y);
+      y += 35;
+      ctx.font = '14px Arial';
+      ctx.fillStyle = '#1f2937';
+      ctx.fillText(recibo.cliente.nombre, 30, y);
+
+      y += 20;
+      ctx.fillStyle = '#6b7280';
+      ctx.fillText(recibo.cliente.contacto, 30, y);
+
+      if (recibo.cliente.direccion) {
+        y += 20;
+        ctx.fillText(recibo.cliente.direccion, 30, y);
+      }
+
+      // Método de pago
+      y += 50;
+      ctx.fillStyle = '#1f2937';
+      ctx.font = 'bold 18px Arial';
+      ctx.fillText('💳 Método de Pago', 30, y);
+
+      y += 35;
+      ctx.font = '14px Arial';
+      ctx.fillStyle = '#4b5563';
+      const metodoPagoTexto = recibo.metodoPago.charAt(0).toUpperCase() + recibo.metodoPago.slice(1);
+      ctx.fillText(metodoPagoTexto, 30, y);
 
       // Footer
-      y = canvas.height - 40;
-      ctx.fillStyle = '#666666';
+      y = canvas.height - 60;
+      ctx.fillStyle = '#9ca3af';
       ctx.font = '12px Arial';
-      ctx.fillText('Gracias por su preferencia', canvas.width / 2, y);
+      ctx.textAlign = 'center';
+      ctx.fillText('Te hemos enviado un correo con los detalles de tu compra a', canvas.width / 2, y);
+      
+      y += 20;
+      ctx.fillStyle = '#3b82f6';
+      ctx.font = 'bold 12px Arial';
+      ctx.fillText(recibo.cliente.contacto, canvas.width / 2, y);
 
       // Convertir a blob y luego a URL
       canvas.toBlob((blob) => {
@@ -260,19 +353,14 @@ const JHGestionRecibos = () => {
         link.download = `recibo_${reciboCompartir.numeroPedido}.png`;
         link.click();
         
-        // Mensaje para WhatsApp
-        const mensaje = `Hola! Te envio el recibo de pago:\n\n` +
-                       `N° Pedido: ${reciboCompartir.numeroPedido}\n` +
-                       `Cliente: ${reciboCompartir.cliente.nombre}\n` +
-                       `Monto: ${reciboCompartir.monto} ${reciboCompartir.tipoMoneda}\n` +
-                       `Fecha: ${reciboCompartir.fechaEmision}\n\n` +
-                       `La imagen del recibo se ha descargado automáticamente.`;
+        // Solo mensaje de notificación para WhatsApp
+        const mensaje = `Hola! Te envío el recibo de tu compra. Número de pedido: ${reciboCompartir.numeroPedido}`;
 
         const urlWhatsApp = `https://wa.me/${telefono.replace(/\D/g, '')}?text=${encodeURIComponent(mensaje)}`;
         window.open(urlWhatsApp, '_blank');
         
         toast({
-          title: "Recibo compartido",
+          title: "Recibo compartido exitosamente",
           description: "Se ha descargado la imagen y abierto WhatsApp",
         });
       }
@@ -299,7 +387,7 @@ const JHGestionRecibos = () => {
   });
 
   const totalRecibos = recibos.length;
-  const montoTotal = recibos.reduce((acc, r) => acc + parseFloat(r.monto), 0);
+  const montoTotalUSD = recibos.reduce((acc, r) => acc + convertirMoneda(r.monto, r.moneda, 'USD'), 0);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -307,12 +395,12 @@ const JHGestionRecibos = () => {
       
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Gestión de Recibos</h1>
-          <p className="text-lg text-gray-600">Crea, edita y gestiona todos los recibos de pago</p>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent mb-2">Gestión de Recibos</h1>
+          <p className="text-lg text-gray-600">Crea, edita y gestiona todos los recibos de pago con conversión automática</p>
         </div>
         <Dialog open={isCrearOpen} onOpenChange={setIsCrearOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-blue-600 hover:bg-blue-700">
+            <Button className="bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-700 hover:to-blue-700 shadow-lg">
               <Plus className="w-4 h-4 mr-2" />
               Nuevo Recibo
             </Button>
@@ -376,13 +464,16 @@ const JHGestionRecibos = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="tipoMoneda">Tipo de Moneda *</Label>
-                  <Input
-                    id="tipoMoneda"
-                    value={nuevoRecibo.tipoMoneda}
-                    onChange={(e) => setNuevoRecibo({ ...nuevoRecibo, tipoMoneda: e.target.value.toUpperCase() })}
-                    placeholder="USD, EUR, BS"
-                  />
+                  <Label htmlFor="moneda">Moneda *</Label>
+                  <Select value={nuevoRecibo.moneda} onValueChange={(value: 'USD' | 'BS') => setNuevoRecibo({ ...nuevoRecibo, moneda: value })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="USD">USD (Dólares)</SelectItem>
+                      <SelectItem value="BS">{tasaCambio?.moneda || 'BS'} (Moneda Local)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="space-y-2">
@@ -411,7 +502,7 @@ const JHGestionRecibos = () => {
                   Cancelar
                 </Button>
                 <Button
-                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                  className="flex-1 bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-700 hover:to-blue-700"
                   onClick={crearRecibo}
                 >
                   Crear Recibo
@@ -422,33 +513,36 @@ const JHGestionRecibos = () => {
         </Dialog>
       </div>
 
-      {/* Tarjetas de resumen */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="animate-scale-in">
+      {/* Tarjetas de resumen mejoradas */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card className="relative overflow-hidden bg-gradient-to-br from-emerald-50 to-green-100 border-emerald-200 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
+          <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-200/30 rounded-bl-3xl"></div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Recibos</CardTitle>
-            <FileText className="w-4 h-4 text-blue-600" />
+            <CardTitle className="text-sm font-medium text-emerald-700">Total de Recibos</CardTitle>
+            <FileText className="w-5 h-5 text-emerald-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{totalRecibos}</div>
-            <p className="text-xs text-gray-500">recibos generados</p>
+            <div className="text-3xl font-bold text-emerald-800">{totalRecibos}</div>
+            <p className="text-xs text-emerald-600 mt-1">recibos generados</p>
           </CardContent>
         </Card>
-        <Card className="animate-scale-in" style={{ animationDelay: '0.1s' }}>
+        
+        <Card className="relative overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-100 border-blue-200 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
+          <div className="absolute top-0 right-0 w-20 h-20 bg-blue-200/30 rounded-bl-3xl"></div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Monto Total</CardTitle>
-            <DollarSign className="w-4 h-4 text-green-600" />
+            <CardTitle className="text-sm font-medium text-blue-700">Monto Total</CardTitle>
+            <DollarSign className="w-5 h-5 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">${montoTotal.toFixed(2)}</div>
-            <p className="text-xs text-gray-500">valor total facturado</p>
+            <div className="text-2xl font-bold text-blue-800">${montoTotalUSD.toFixed(2)}</div>
+            <p className="text-xs text-blue-600 mt-1">valor total facturado</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filtros */}
-      <Card>
-        <CardContent className="p-4">
+      {/* Filtros mejorados */}
+      <Card className="shadow-lg border-0 bg-gradient-to-r from-gray-50 to-white">
+        <CardContent className="p-6">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
@@ -457,7 +551,7 @@ const JHGestionRecibos = () => {
                   placeholder="Buscar por número de pedido o cliente..."
                   value={filtro}
                   onChange={(e) => setFiltro(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
                 />
               </div>
             </div>
@@ -476,57 +570,67 @@ const JHGestionRecibos = () => {
         </CardContent>
       </Card>
 
-      {/* Tabla de recibos */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Lista de Recibos ({recibosFiltrados.length})</CardTitle>
+      {/* Tabla mejorada */}
+      <Card className="shadow-xl border-0">
+        <CardHeader className="bg-gradient-to-r from-emerald-600 to-blue-600 text-white">
+          <CardTitle className="text-xl">Lista de Recibos ({recibosFiltrados.length})</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b">
-                  <th className="text-left p-2">N° Pedido</th>
-                  <th className="text-left p-2">Cliente</th>
-                  <th className="text-left p-2">Fecha</th>
-                  <th className="text-left p-2">Monto</th>
-                  <th className="text-left p-2">Estado</th>
-                  <th className="text-left p-2">Acciones</th>
+                <tr className="border-b bg-gray-50">
+                  <th className="text-left p-4 font-semibold text-gray-700">N° Pedido</th>
+                  <th className="text-left p-4 font-semibold text-gray-700">Cliente</th>
+                  <th className="text-left p-4 font-semibold text-gray-700">Fecha</th>
+                  <th className="text-left p-4 font-semibold text-gray-700">Monto USD</th>
+                  <th className="text-left p-4 font-semibold text-gray-700">Monto {tasaCambio?.moneda || 'BS'}</th>
+                  <th className="text-left p-4 font-semibold text-gray-700">Estado</th>
+                  <th className="text-left p-4 font-semibold text-gray-700">Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {recibosFiltrados.map((recibo, index) => (
                   <tr 
                     key={recibo.id} 
-                    className="border-b hover:bg-gray-50 animate-fade-in"
+                    className="border-b hover:bg-gradient-to-r hover:from-emerald-50 hover:to-blue-50 transition-all duration-200 animate-fade-in"
                     style={{ animationDelay: `${index * 0.05}s` }}
                   >
-                    <td className="p-2 font-medium">{recibo.numeroPedido}</td>
-                    <td className="p-2">
+                    <td className="p-4 font-medium">{recibo.numeroPedido}</td>
+                    <td className="p-4">
                       <div>
                         <div className="font-medium">{recibo.cliente.nombre}</div>
                         <div className="text-xs text-gray-500">{recibo.cliente.contacto}</div>
                       </div>
                     </td>
-                    <td className="p-2 text-sm">{recibo.fechaEmision}</td>
-                    <td className="p-2">
-                      <Badge variant="default">
-                        {recibo.monto} {recibo.tipoMoneda}
+                    <td className="p-4 text-sm">{recibo.fechaEmision}</td>
+                    <td className="p-4">
+                      <Badge variant="default" className="bg-green-100 text-green-800 border-green-300">
+                        ${convertirMoneda(recibo.monto, recibo.moneda, 'USD').toFixed(2)}
                       </Badge>
                     </td>
-                    <td className="p-2">
+                    <td className="p-4">
+                      <Badge variant="outline" className="border-blue-300 text-blue-700">
+                        {tasaCambio?.moneda || 'BS'} {convertirMoneda(recibo.monto, recibo.moneda, 'BS').toFixed(2)}
+                      </Badge>
+                    </td>
+                    <td className="p-4">
                       <Badge 
                         variant={
                           recibo.estado === 'pagado' ? 'secondary' : 
                           recibo.estado === 'cancelado' ? 'destructive' : 'default'
+                        }
+                        className={
+                          recibo.estado === 'pagado' ? 'bg-green-100 text-green-800' :
+                          recibo.estado === 'cancelado' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
                         }
                       >
                         {recibo.estado === 'pagado' ? 'Pagado' : 
                          recibo.estado === 'cancelado' ? 'Cancelado' : 'Pendiente'}
                       </Badge>
                     </td>
-                    <td className="p-2">
-                      <div className="flex gap-1">
+                    <td className="p-4">
+                      <div className="flex gap-2">
                         <Button
                           variant="ghost"
                           size="sm"
@@ -534,7 +638,7 @@ const JHGestionRecibos = () => {
                             setReciboCompartir(recibo);
                             setIsCompartirOpen(true);
                           }}
-                          className="w-8 h-8 p-0 text-green-600 hover:text-green-700"
+                          className="w-8 h-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
                           title="Compartir por WhatsApp"
                         >
                           <Share2 className="w-4 h-4" />
@@ -546,7 +650,7 @@ const JHGestionRecibos = () => {
                             setReciboEditando(recibo);
                             setIsEditarOpen(true);
                           }}
-                          className="w-8 h-8 p-0 text-blue-600 hover:text-blue-700"
+                          className="w-8 h-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
@@ -554,7 +658,7 @@ const JHGestionRecibos = () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => eliminarRecibo(recibo.id)}
-                          className="w-8 h-8 p-0 text-red-600 hover:text-red-700"
+                          className="w-8 h-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -565,8 +669,9 @@ const JHGestionRecibos = () => {
               </tbody>
             </table>
             {recibosFiltrados.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                No se encontraron recibos que coincidan con los filtros
+              <div className="text-center py-12 text-gray-500">
+                <FileText className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <p className="text-lg">No se encontraron recibos que coincidan con los filtros</p>
               </div>
             )}
           </div>
@@ -579,7 +684,7 @@ const JHGestionRecibos = () => {
           <DialogHeader>
             <DialogTitle>Compartir Recibo por WhatsApp</DialogTitle>
             <DialogDescription>
-              Se generará una imagen del recibo y se enviará por WhatsApp
+              Se generará una imagen del recibo como la que mostraste y se enviará por WhatsApp
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -593,10 +698,10 @@ const JHGestionRecibos = () => {
               />
             </div>
             {reciboCompartir && (
-              <div className="bg-gray-50 p-4 rounded-lg">
+              <div className="bg-gradient-to-r from-emerald-50 to-blue-50 p-4 rounded-lg border border-emerald-200">
                 <h4 className="font-medium mb-2">Recibo seleccionado:</h4>
                 <p className="text-sm text-gray-600">
-                  N° {reciboCompartir.numeroPedido} - {reciboCompartir.cliente.nombre} - {reciboCompartir.monto} {reciboCompartir.tipoMoneda}
+                  N° {reciboCompartir.numeroPedido} - {reciboCompartir.cliente.nombre} - {reciboCompartir.monto} {reciboCompartir.moneda}
                 </p>
               </div>
             )}
@@ -609,7 +714,7 @@ const JHGestionRecibos = () => {
                 Cancelar
               </Button>
               <Button
-                className="flex-1 bg-green-600 hover:bg-green-700"
+                className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
                 onClick={compartirPorWhatsApp}
               >
                 Enviar por WhatsApp
@@ -677,12 +782,16 @@ const JHGestionRecibos = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-tipoMoneda">Tipo de Moneda</Label>
-                  <Input
-                    id="edit-tipoMoneda"
-                    value={reciboEditando.tipoMoneda}
-                    onChange={(e) => setReciboEditando({ ...reciboEditando, tipoMoneda: e.target.value.toUpperCase() })}
-                  />
+                  <Label htmlFor="edit-moneda">Moneda</Label>
+                  <Select value={reciboEditando.moneda} onValueChange={(value: 'USD' | 'BS') => setReciboEditando({ ...reciboEditando, moneda: value })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="USD">USD (Dólares)</SelectItem>
+                      <SelectItem value="BS">{tasaCambio?.moneda || 'BS'} (Moneda Local)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -729,7 +838,7 @@ const JHGestionRecibos = () => {
                   Cancelar
                 </Button>
                 <Button
-                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                  className="flex-1 bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-700 hover:to-blue-700"
                   onClick={editarRecibo}
                 >
                   Guardar Cambios
