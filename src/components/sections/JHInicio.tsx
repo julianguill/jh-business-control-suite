@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,7 +9,6 @@ import { toast } from '@/hooks/use-toast';
 
 const JHInicio = () => {
   const [tasa, setTasa] = useState('');
-  const [moneda, setMoneda] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [tasaGuardada, setTasaGuardada] = useState<{tasa: string, moneda: string} | null>(null);
 
@@ -22,27 +20,26 @@ const JHInicio = () => {
   }, []);
 
   const handleAsignarTasa = () => {
-    if (!tasa || !moneda) {
+    if (!tasa) {
       toast({
         title: "Error",
-        description: "Por favor complete todos los campos",
+        description: "Por favor ingrese la tasa de cambio",
         variant: "destructive",
       });
       return;
     }
 
-    const tasaData = { tasa, moneda };
+    const tasaData = { tasa, moneda: 'BS' };
     localStorage.setItem('tasaCambio', JSON.stringify(tasaData));
     setTasaGuardada(tasaData);
     
     toast({
       title: "Tasa asignada exitosamente",
-      description: `Nueva tasa de cambio: ${tasa} ${moneda}`,
+      description: `Nueva tasa: ${tasa} BS por 1 USD`,
     });
     
     setIsOpen(false);
     setTasa('');
-    setMoneda('');
   };
 
   return (
@@ -165,8 +162,8 @@ const JHInicio = () => {
               <h3 className="text-2xl font-bold text-amber-900 mb-2">Gestión de Tasa de Cambio</h3>
               <p className="text-amber-700 text-lg">
                 {tasaGuardada 
-                  ? `Tasa actual: ${tasaGuardada.tasa} ${tasaGuardada.moneda} por USD`
-                  : 'Configura la tasa de cambio para las conversiones automáticas'
+                  ? `Tasa actual: ${tasaGuardada.tasa} BS por 1 USD`
+                  : 'Configura la tasa de cambio BS por USD para las conversiones automáticas'
                 }
               </p>
             </div>
@@ -187,12 +184,12 @@ const JHInicio = () => {
                     Configurar Tasa de Cambio
                   </DialogTitle>
                   <DialogDescription className="text-base">
-                    Establece la tasa de cambio actual para las conversiones automáticas del sistema.
+                    Establece cuántos bolívares equivalen a 1 dólar estadounidense.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-6">
                   <div className="space-y-3">
-                    <Label htmlFor="tasa" className="text-base font-medium">Tasa de Cambio (por 1 USD)</Label>
+                    <Label htmlFor="tasa" className="text-base font-medium">BS por 1 USD</Label>
                     <Input
                       id="tasa"
                       type="number"
@@ -202,17 +199,7 @@ const JHInicio = () => {
                       onChange={(e) => setTasa(e.target.value)}
                       className="text-lg p-3"
                     />
-                  </div>
-                  <div className="space-y-3">
-                    <Label htmlFor="moneda" className="text-base font-medium">Moneda Local</Label>
-                    <Input
-                      id="moneda"
-                      type="text"
-                      placeholder="Ej: BS, COP, PEN"
-                      value={moneda}
-                      onChange={(e) => setMoneda(e.target.value.toUpperCase())}
-                      className="text-lg p-3"
-                    />
+                    <p className="text-sm text-gray-600">Ingresa la cantidad de bolívares que equivale a 1 dólar</p>
                   </div>
                   <div className="flex gap-3 pt-4">
                     <Button

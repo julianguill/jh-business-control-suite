@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,9 +11,8 @@ import {
   Search, 
   Edit, 
   Trash2, 
-  Share2, 
+  Download, 
   FileText, 
-  Download,
   Calendar,
   User,
   DollarSign
@@ -42,10 +40,7 @@ const JHGestionRecibos = () => {
   const [filtroEstado, setFiltroEstado] = useState('todos');
   const [isCrearOpen, setIsCrearOpen] = useState(false);
   const [isEditarOpen, setIsEditarOpen] = useState(false);
-  const [isCompartirOpen, setIsCompartirOpen] = useState(false);
   const [reciboEditando, setReciboEditando] = useState<Recibo | null>(null);
-  const [reciboCompartir, setReciboCompartir] = useState<Recibo | null>(null);
-  const [telefono, setTelefono] = useState('');
   const [tasaCambio, setTasaCambio] = useState<{tasa: string, moneda: string} | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -333,35 +328,19 @@ const JHGestionRecibos = () => {
     });
   };
 
-  const compartirPorWhatsApp = async () => {
-    if (!telefono || !reciboCompartir) {
-      toast({
-        title: "Error",
-        description: "Seleccione un recibo y proporcione un número de teléfono",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  const descargarRecibo = async (recibo: Recibo) => {
     try {
-      const imagenUrl = await generarImagenRecibo(reciboCompartir);
+      const imagenUrl = await generarImagenRecibo(recibo);
       
       if (imagenUrl) {
-        // Crear enlace para descargar la imagen
         const link = document.createElement('a');
         link.href = imagenUrl;
-        link.download = `recibo_${reciboCompartir.numeroPedido}.png`;
+        link.download = `recibo_${recibo.numeroPedido}.png`;
         link.click();
         
-        // Solo mensaje de notificación para WhatsApp
-        const mensaje = `Hola! Te envío el recibo de tu compra. Número de pedido: ${reciboCompartir.numeroPedido}`;
-
-        const urlWhatsApp = `https://wa.me/${telefono.replace(/\D/g, '')}?text=${encodeURIComponent(mensaje)}`;
-        window.open(urlWhatsApp, '_blank');
-        
         toast({
-          title: "Recibo compartido exitosamente",
-          description: "Se ha descargado la imagen y abierto WhatsApp",
+          title: "Recibo descargado exitosamente",
+          description: `El archivo recibo_${recibo.numeroPedido}.png se ha descargado`,
         });
       }
     } catch (error) {
@@ -371,10 +350,6 @@ const JHGestionRecibos = () => {
         variant: "destructive",
       });
     }
-
-    setIsCompartirOpen(false);
-    setTelefono('');
-    setReciboCompartir(null);
   };
 
   const recibosFiltrados = recibos.filter(recibo => {
@@ -513,7 +488,6 @@ const JHGestionRecibos = () => {
         </Dialog>
       </div>
 
-      {/* Tarjetas de resumen mejoradas */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="relative overflow-hidden bg-gradient-to-br from-emerald-50 to-green-100 border-emerald-200 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
           <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-200/30 rounded-bl-3xl"></div>
@@ -540,7 +514,6 @@ const JHGestionRecibos = () => {
         </Card>
       </div>
 
-      {/* Filtros mejorados */}
       <Card className="shadow-lg border-0 bg-gradient-to-r from-gray-50 to-white">
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row gap-4">
@@ -570,7 +543,6 @@ const JHGestionRecibos = () => {
         </CardContent>
       </Card>
 
-      {/* Tabla mejorada */}
       <Card className="shadow-xl border-0">
         <CardHeader className="bg-gradient-to-r from-emerald-600 to-blue-600 text-white">
           <CardTitle className="text-xl">Lista de Recibos ({recibosFiltrados.length})</CardTitle>
@@ -634,14 +606,11 @@ const JHGestionRecibos = () => {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => {
-                            setReciboCompartir(recibo);
-                            setIsCompartirOpen(true);
-                          }}
+                          onClick={() => descargarRecibo(recibo)}
                           className="w-8 h-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
-                          title="Compartir por WhatsApp"
+                          title="Descargar recibo"
                         >
-                          <Share2 className="w-4 h-4" />
+                          <Download className="w-4 h-4" />
                         </Button>
                         <Button
                           variant="ghost"
@@ -678,53 +647,6 @@ const JHGestionRecibos = () => {
         </CardContent>
       </Card>
 
-      {/* Dialog para compartir por WhatsApp */}
-      <Dialog open={isCompartirOpen} onOpenChange={setIsCompartirOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Compartir Recibo por WhatsApp</DialogTitle>
-            <DialogDescription>
-              Se generará una imagen del recibo como la que mostraste y se enviará por WhatsApp
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="telefono">Número de Teléfono</Label>
-              <Input
-                id="telefono"
-                value={telefono}
-                onChange={(e) => setTelefono(e.target.value)}
-                placeholder="+58 412 123 4567"
-              />
-            </div>
-            {reciboCompartir && (
-              <div className="bg-gradient-to-r from-emerald-50 to-blue-50 p-4 rounded-lg border border-emerald-200">
-                <h4 className="font-medium mb-2">Recibo seleccionado:</h4>
-                <p className="text-sm text-gray-600">
-                  N° {reciboCompartir.numeroPedido} - {reciboCompartir.cliente.nombre} - {reciboCompartir.monto} {reciboCompartir.moneda}
-                </p>
-              </div>
-            )}
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => setIsCompartirOpen(false)}
-              >
-                Cancelar
-              </Button>
-              <Button
-                className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-                onClick={compartirPorWhatsApp}
-              >
-                Enviar por WhatsApp
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog para editar recibo */}
       <Dialog open={isEditarOpen} onOpenChange={setIsEditarOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
