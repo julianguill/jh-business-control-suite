@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -22,7 +21,7 @@ const JHForm = () => {
     // Simular delay de autenticación
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    if (usuario === 'admin' && clave === '1bdb0c1') {
+    if (usuario === 'julian' && clave === 'agosto') {
       toast({
         title: "¡Bienvenido!",
         description: "Inicio de sesión exitoso",
