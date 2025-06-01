@@ -3,8 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { 
   Search, 
   Eye, 
@@ -159,117 +160,120 @@ const JHHistorial = () => {
         </CardContent>
       </Card>
 
-      {/* Tabla de recibos */}
+      {/* Tabla de recibos usando componentes shadcn/ui */}
       <Card className="shadow-xl">
         <CardHeader className="bg-gradient-to-r from-green-600 to-blue-600 text-white">
           <CardTitle className="text-xl">Listado de Recibos ({recibosFiltrados.length})</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b bg-gray-50">
-                  <th className="text-left p-4 font-semibold text-gray-700">N° Pedido</th>
-                  <th className="text-left p-4 font-semibold text-gray-700">Cliente</th>
-                  <th className="text-left p-4 font-semibold text-gray-700">Fecha</th>
-                  <th className="text-left p-4 font-semibold text-gray-700">Total</th>
-                  <th className="text-left p-4 font-semibold text-gray-700">Estado</th>
-                  <th className="text-left p-4 font-semibold text-gray-700">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recibosFiltrados.map((recibo, index) => (
-                  <tr 
-                    key={recibo.id} 
-                    className="border-b hover:bg-gradient-to-r hover:from-green-50 hover:to-blue-50 transition-all duration-200 animate-fade-in"
-                    style={{ animationDelay: `${index * 0.05}s` }}
-                  >
-                    <td className="p-4 font-medium text-blue-600">#{recibo.numeroPedido}</td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-2">
-                        <User className="w-4 h-4 text-gray-400" />
-                        <span className="font-medium">{recibo.cliente.nombre}</span>
-                      </div>
-                    </td>
-                    <td className="p-4 text-gray-600">{recibo.fechaEmision}</td>
-                    <td className="p-4">
-                      <Badge variant="default" className="bg-green-100 text-green-800">
-                        ${recibo.total.toFixed(2)} {recibo.tipoMoneda}
-                      </Badge>
-                    </td>
-                    <td className="p-4">
-                      <Badge 
-                        variant={
-                          recibo.estado === 'pagado' ? 'secondary' : 
-                          recibo.estado === 'vencido' ? 'destructive' : 'default'
-                        }
-                      >
-                        {recibo.estado === 'pagado' ? 'Pagado' : 
-                         recibo.estado === 'vencido' ? 'Vencido' : 'Pendiente'}
-                      </Badge>
-                    </td>
-                    <td className="p-4">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => verDetalle(recibo)}
-                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                      >
-                        <Eye className="w-4 h-4 mr-1" />
-                        Ver Detalle
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {recibosFiltrados.length === 0 && (
-              <div className="text-center py-12 text-gray-500">
-                <FileText className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                <p className="text-lg">No se encontraron recibos que coincidan con los filtros</p>
-              </div>
-            )}
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50">
+                  <TableHead className="font-semibold text-gray-700">N° Pedido</TableHead>
+                  <TableHead className="font-semibold text-gray-700">Cliente</TableHead>
+                  <TableHead className="font-semibold text-gray-700">Fecha</TableHead>
+                  <TableHead className="font-semibold text-gray-700">Total</TableHead>
+                  <TableHead className="font-semibold text-gray-700">Estado</TableHead>
+                  <TableHead className="font-semibold text-gray-700">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {recibosFiltrados.length > 0 ? (
+                  recibosFiltrados.map((recibo, index) => (
+                    <TableRow 
+                      key={recibo.id} 
+                      className="hover:bg-gradient-to-r hover:from-green-50 hover:to-blue-50 transition-all duration-200 animate-fade-in"
+                      style={{ animationDelay: `${index * 0.05}s` }}
+                    >
+                      <TableCell className="font-medium text-blue-600">#{recibo.numeroPedido}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <User className="w-4 h-4 text-gray-400" />
+                          <span className="font-medium">{recibo.cliente.nombre}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-gray-600">{recibo.fechaEmision}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="bg-green-100 text-green-800">
+                          ${recibo.total.toFixed(2)} {recibo.tipoMoneda}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant={
+                            recibo.estado === 'pagado' ? 'secondary' : 
+                            recibo.estado === 'vencido' ? 'destructive' : 'default'
+                          }
+                        >
+                          {recibo.estado === 'pagado' ? 'Pagado' : 
+                           recibo.estado === 'vencido' ? 'Vencido' : 'Pendiente'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => verDetalle(recibo)}
+                          className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                        >
+                          <Eye className="w-4 h-4 mr-1" />
+                          Ver Detalle
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-12 text-gray-500">
+                      <FileText className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                      <p className="text-lg">No se encontraron recibos que coincidan con los filtros</p>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
           </div>
         </CardContent>
       </Card>
 
-      {/* Dialog para ver detalle del recibo - Versión adaptable */}
+      {/* Dialog para ver detalle del recibo - Versión responsive y mejorada */}
       <Dialog open={isDetalleOpen} onOpenChange={setIsDetalleOpen}>
-        <DialogContent className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold text-center mb-4">Detalle del Recibo</DialogTitle>
           </DialogHeader>
           {reciboSeleccionado && (
-            <div className="bg-white p-4 md:p-6 text-sm">
+            <div className="bg-white p-3 md:p-6 text-xs md:text-sm">
               {/* Header del recibo */}
-              <div className="text-center mb-6 pb-4 border-b-2 border-gray-200">
-                <h1 className="text-xl md:text-2xl font-bold text-blue-600 mb-2">JH CONTROL</h1>
+              <div className="text-center mb-4 md:mb-6 pb-3 md:pb-4 border-b-2 border-gray-200">
+                <h1 className="text-lg md:text-2xl font-bold text-blue-600 mb-2">JH CONTROL</h1>
                 <p className="text-gray-600 text-xs md:text-sm">Sistema de Gestión Empresarial</p>
-                <div className="mt-3">
-                  <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs md:text-sm font-semibold">
+                <div className="mt-2 md:mt-3">
+                  <span className="bg-blue-100 text-blue-800 px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-semibold">
                     RECIBO #{reciboSeleccionado.numeroPedido}
                   </span>
                 </div>
               </div>
 
               {/* Información de fechas y estado */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 text-xs">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mb-4 md:mb-6 text-xs">
                 <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-blue-500" />
+                  <Calendar className="w-3 md:w-4 h-3 md:h-4 text-blue-500" />
                   <div>
                     <p className="font-semibold text-gray-700">Fecha de Emisión</p>
                     <p className="text-gray-600">{reciboSeleccionado.fechaEmision}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-orange-500" />
+                  <Clock className="w-3 md:w-4 h-3 md:h-4 text-orange-500" />
                   <div>
                     <p className="font-semibold text-gray-700">Vencimiento</p>
                     <p className="text-gray-600">{reciboSeleccionado.fechaVencimiento}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className={`w-3 h-3 rounded-full ${
+                  <div className={`w-2 md:w-3 h-2 md:h-3 rounded-full ${
                     reciboSeleccionado.estado === 'pagado' ? 'bg-green-500' : 
                     reciboSeleccionado.estado === 'vencido' ? 'bg-red-500' : 'bg-yellow-500'
                   }`}></div>
@@ -281,12 +285,12 @@ const JHHistorial = () => {
               </div>
 
               {/* Información del cliente */}
-              <div className="bg-gray-50 p-4 rounded-lg mb-6">
-                <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2 text-sm">
-                  <User className="w-4 h-4" />
+              <div className="bg-gray-50 p-3 md:p-4 rounded-lg mb-4 md:mb-6">
+                <h3 className="font-bold text-gray-800 mb-2 md:mb-3 flex items-center gap-2 text-sm">
+                  <User className="w-3 md:w-4 h-3 md:h-4" />
                   Información del Cliente
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3 text-xs">
                   <div>
                     <p className="font-semibold text-gray-700">Nombre:</p>
                     <p className="text-gray-600">{reciboSeleccionado.cliente.nombre}</p>
@@ -295,7 +299,7 @@ const JHHistorial = () => {
                     <Mail className="w-3 h-3 text-gray-500" />
                     <div>
                       <p className="font-semibold text-gray-700">Email:</p>
-                      <p className="text-gray-600">{reciboSeleccionado.cliente.email}</p>
+                      <p className="text-gray-600 break-all">{reciboSeleccionado.cliente.email}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
@@ -315,36 +319,36 @@ const JHHistorial = () => {
                 </div>
               </div>
 
-              {/* Detalles de items */}
-              <div className="mb-6">
-                <h3 className="font-bold text-gray-800 mb-3 text-sm">Detalle de Servicios/Productos</h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full border border-gray-200 text-xs">
-                    <thead className="bg-gray-100">
-                      <tr>
-                        <th className="text-left p-2 border-b font-semibold">Descripción</th>
-                        <th className="text-center p-2 border-b font-semibold w-16">Cant.</th>
-                        <th className="text-right p-2 border-b font-semibold w-20">Precio</th>
-                        <th className="text-right p-2 border-b font-semibold w-20">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+              {/* Detalles de items usando shadcn Table */}
+              <div className="mb-4 md:mb-6">
+                <h3 className="font-bold text-gray-800 mb-2 md:mb-3 text-sm">Detalle de Servicios/Productos</h3>
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-gray-100">
+                        <TableHead className="text-xs md:text-sm font-semibold">Descripción</TableHead>
+                        <TableHead className="text-center text-xs md:text-sm font-semibold w-16">Cant.</TableHead>
+                        <TableHead className="text-right text-xs md:text-sm font-semibold w-20">Precio</TableHead>
+                        <TableHead className="text-right text-xs md:text-sm font-semibold w-20">Total</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {reciboSeleccionado.items.map((item, index) => (
-                        <tr key={index} className="border-b">
-                          <td className="p-2">{item.descripcion}</td>
-                          <td className="p-2 text-center">{item.cantidad}</td>
-                          <td className="p-2 text-right">${item.precio.toFixed(2)}</td>
-                          <td className="p-2 text-right font-semibold">${item.total.toFixed(2)}</td>
-                        </tr>
+                        <TableRow key={index}>
+                          <TableCell className="text-xs md:text-sm">{item.descripcion}</TableCell>
+                          <TableCell className="text-center text-xs md:text-sm">{item.cantidad}</TableCell>
+                          <TableCell className="text-right text-xs md:text-sm">${item.precio.toFixed(2)}</TableCell>
+                          <TableCell className="text-right font-semibold text-xs md:text-sm">${item.total.toFixed(2)}</TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </Table>
                 </div>
               </div>
 
               {/* Totales */}
-              <div className="bg-blue-50 p-4 rounded-lg mb-6">
-                <div className="space-y-2 text-sm">
+              <div className="bg-blue-50 p-3 md:p-4 rounded-lg mb-4 md:mb-6">
+                <div className="space-y-1 md:space-y-2 text-xs md:text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-700">Subtotal:</span>
                     <span className="font-semibold">${reciboSeleccionado.subtotal.toFixed(2)}</span>
@@ -356,7 +360,7 @@ const JHHistorial = () => {
                     </div>
                   )}
                   <hr className="border-gray-300" />
-                  <div className="flex justify-between text-lg font-bold text-blue-600">
+                  <div className="flex justify-between text-base md:text-lg font-bold text-blue-600">
                     <span>TOTAL:</span>
                     <span>${reciboSeleccionado.total.toFixed(2)} {reciboSeleccionado.tipoMoneda}</span>
                   </div>
@@ -365,14 +369,14 @@ const JHHistorial = () => {
 
               {/* Notas adicionales */}
               {reciboSeleccionado.notas && (
-                <div className="bg-yellow-50 p-4 rounded-lg mb-4">
+                <div className="bg-yellow-50 p-3 md:p-4 rounded-lg mb-3 md:mb-4">
                   <h4 className="font-semibold text-gray-800 mb-2 text-sm">Notas:</h4>
                   <p className="text-gray-700 text-xs">{reciboSeleccionado.notas}</p>
                 </div>
               )}
 
               {/* Footer */}
-              <div className="text-center pt-6 border-t border-gray-200">
+              <div className="text-center pt-4 md:pt-6 border-t border-gray-200">
                 <p className="text-xs text-gray-500">
                   Gracias por su confianza - JH Control
                 </p>
