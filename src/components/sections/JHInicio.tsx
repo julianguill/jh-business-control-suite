@@ -15,7 +15,9 @@ const JHInicio = () => {
   useEffect(() => {
     const tasaData = localStorage.getItem('tasaCambio');
     if (tasaData) {
-      setTasaGuardada(JSON.parse(tasaData));
+      const tasaObj = JSON.parse(tasaData);
+      setTasaGuardada(tasaObj);
+      setTasa(tasaObj.tasa); // Mostrar la tasa actual en el campo
     }
   }, []);
 
@@ -39,7 +41,6 @@ const JHInicio = () => {
     });
     
     setIsOpen(false);
-    setTasa('');
   };
 
   return (

@@ -16,8 +16,9 @@ interface CuentaPorPagar {
   proveedor: string;
   concepto: string;
   monto: string;
-  fechaVencimiento: string;
-  estado: 'pendiente' | 'pagado' | 'vencido';
+  tipoMoneda: string;
+  fechaCreacion: string;
+  estado: 'pendiente' | 'pagado';
   descripcion?: string;
 }
 
@@ -33,7 +34,7 @@ const JHCuentasPorPagar = () => {
     proveedor: '',
     concepto: '',
     monto: '',
-    fechaVencimiento: '',
+    tipoMoneda: 'USD',
     descripcion: ''
   });
 
@@ -47,14 +48,8 @@ const JHCuentasPorPagar = () => {
     setCuentas(nuevasCuentas);
   };
 
-  const determinarEstado = (fechaVencimiento: string): 'pendiente' | 'vencido' => {
-    const hoy = new Date();
-    const vencimiento = new Date(fechaVencimiento);
-    return vencimiento < hoy ? 'vencido' : 'pendiente';
-  };
-
   const crearCuenta = () => {
-    if (!nuevaCuenta.proveedor || !nuevaCuenta.concepto || !nuevaCuenta.monto || !nuevaCuenta.fechaVencimiento) {
+    if (!nuevaCuenta.proveedor || !nuevaCuenta.concepto || !nuevaCuenta.monto) {
       toast({
         title: "Error",
         description: "Por favor complete todos los campos obligatorios",
@@ -68,8 +63,9 @@ const JHCuentasPorPagar = () => {
       proveedor: nuevaCuenta.proveedor,
       concepto: nuevaCuenta.concepto,
       monto: nuevaCuenta.monto,
-      fechaVencimiento: nuevaCuenta.fechaVencimiento,
-      estado: determinarEstado(nuevaCuenta.fechaVencimiento),
+      tipoMoneda: nuevaCuenta.tipoMoneda,
+      fechaCreacion: new Date().toLocaleDateString('es-ES'),
+      estado: 'pendiente',
       descripcion: nuevaCuenta.descripcion
     };
 
@@ -81,7 +77,7 @@ const JHCuentasPorPagar = () => {
       description: `La cuenta por pagar ha sido registrada`,
     });
 
-    setNuevaCuenta({ proveedor: '', concepto: '', monto: '', fechaVencimiento: '', descripcion: '' });
+    setNuevaCuenta({ proveedor: '', concepto: '', monto: '', tipoMoneda: 'USD', descripcion: '' });
     setIsCrearOpen(false);
   };
 
@@ -134,7 +130,6 @@ const JHCuentasPorPagar = () => {
   });
 
   const montoTotal = cuentas.filter(c => c.estado !== 'pagado').reduce((acc, c) => acc + parseFloat(c.monto), 0);
-  const cuentasVencidas = cuentas.filter(c => c.estado === 'vencido').length;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -188,13 +183,17 @@ const JHCuentasPorPagar = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="fechaVencimiento">Fecha de Vencimiento *</Label>
-                <Input
-                  id="fechaVencimiento"
-                  type="date"
-                  value={nuevaCuenta.fechaVencimiento}
-                  onChange={(e) => setNuevaCuenta({...nuevaCuenta, fechaVencimiento: e.target.value})}
-                />
+                <Label htmlFor="tipoMoneda">Tipo de Moneda *</Label>
+                <Select value={nuevaCuenta.tipoMoneda} onValueChange={(value) => setNuevaCuenta({...nuevaCuenta, tipoMoneda: value})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar moneda" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USD">Dólares (USD)</SelectItem>
+                    <SelectItem value="BS">Bolívares (BS)</SelectItem>
+                    <SelectItem value="EUR">Euros (EUR)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="descripcion">Descripción</Label>
@@ -239,22 +238,24 @@ const JHCuentasPorPagar = () => {
         </Card>
         <Card className="animate-scale-in" style={{ animationDelay: '0.1s' }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Cuentas Vencidas</CardTitle>
-            <Calendar className="w-4 h-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{cuentasVencidas}</div>
-            <p className="text-xs text-gray-500">requieren pago urgente</p>
-          </CardContent>
-        </Card>
-        <Card className="animate-scale-in" style={{ animationDelay: '0.2s' }}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total de Cuentas</CardTitle>
-            <CreditCard className="w-4 h-4 text-blue-600" />
+            <Calendar className="w-4 h-4 text-blue-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">{cuentas.length}</div>
             <p className="text-xs text-gray-500">registradas en el sistema</p>
+          </CardContent>
+        </Card>
+        <Card className="animate-scale-in" style={{ animationDelay: '0.2s' }}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Cuentas Pendientes</CardTitle>
+            <CreditCard className="w-4 h-4 text-orange-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">
+              {cuentas.filter(c => c.estado === 'pendiente').length}
+            </div>
+            <p className="text-xs text-gray-500">por pagar</p>
           </CardContent>
         </Card>
       </div>
@@ -281,7 +282,6 @@ const JHCuentasPorPagar = () => {
               <SelectContent>
                 <SelectItem value="todas">Todos los estados</SelectItem>
                 <SelectItem value="pendiente">Pendientes</SelectItem>
-                <SelectItem value="vencido">Vencidas</SelectItem>
                 <SelectItem value="pagado">Pagadas</SelectItem>
               </SelectContent>
             </Select>
@@ -302,7 +302,7 @@ const JHCuentasPorPagar = () => {
                   <th className="text-left p-2">Proveedor</th>
                   <th className="text-left p-2">Concepto</th>
                   <th className="text-left p-2">Monto</th>
-                  <th className="text-left p-2">Vencimiento</th>
+                  <th className="text-left p-2">Fecha Creación</th>
                   <th className="text-left p-2">Estado</th>
                   <th className="text-left p-2">Acciones</th>
                 </tr>
@@ -325,19 +325,15 @@ const JHCuentasPorPagar = () => {
                     </td>
                     <td className="p-2">
                       <Badge variant="default" className="bg-red-100 text-red-800">
-                        ${cuenta.monto}
+                        {cuenta.monto} {cuenta.tipoMoneda}
                       </Badge>
                     </td>
-                    <td className="p-2 text-sm">{cuenta.fechaVencimiento}</td>
+                    <td className="p-2 text-sm">{cuenta.fechaCreacion}</td>
                     <td className="p-2">
                       <Badge 
-                        variant={
-                          cuenta.estado === 'pagado' ? 'secondary' : 
-                          cuenta.estado === 'vencido' ? 'destructive' : 'default'
-                        }
+                        variant={cuenta.estado === 'pagado' ? 'secondary' : 'default'}
                       >
-                        {cuenta.estado === 'pagado' ? 'Pagado' : 
-                         cuenta.estado === 'vencido' ? 'Vencido' : 'Pendiente'}
+                        {cuenta.estado === 'pagado' ? 'Pagado' : 'Pendiente'}
                       </Badge>
                     </td>
                     <td className="p-2">
@@ -425,13 +421,20 @@ const JHCuentasPorPagar = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-fechaVencimiento">Fecha de Vencimiento</Label>
-                <Input
-                  id="edit-fechaVencimiento"
-                  type="date"
-                  value={cuentaEditando.fechaVencimiento}
-                  onChange={(e) => setCuentaEditando({...cuentaEditando, fechaVencimiento: e.target.value})}
-                />
+                <Label htmlFor="edit-tipoMoneda">Tipo de Moneda</Label>
+                <Select 
+                  value={cuentaEditando.tipoMoneda} 
+                  onValueChange={(value) => setCuentaEditando({...cuentaEditando, tipoMoneda: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USD">Dólares (USD)</SelectItem>
+                    <SelectItem value="BS">Bolívares (BS)</SelectItem>
+                    <SelectItem value="EUR">Euros (EUR)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-estado">Estado</Label>
@@ -444,7 +447,6 @@ const JHCuentasPorPagar = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="pendiente">Pendiente</SelectItem>
-                    <SelectItem value="vencido">Vencido</SelectItem>
                     <SelectItem value="pagado">Pagado</SelectItem>
                   </SelectContent>
                 </Select>

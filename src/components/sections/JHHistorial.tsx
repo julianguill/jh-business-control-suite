@@ -172,68 +172,87 @@ const JHHistorial = () => {
         </CardContent>
       </Card>
 
-      {/* Dialog para ver recibo */}
+      {/* Dialog para ver recibo - Estilo mejorado tipo imagen de recibo */}
       <Dialog open={isVerOpen} onOpenChange={setIsVerOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Detalle del Recibo</DialogTitle>
-            <DialogDescription>
-              Información completa del recibo seleccionado
+            <DialogTitle className="text-center text-2xl font-bold text-blue-600">RECIBO DE PAGO</DialogTitle>
+            <DialogDescription className="text-center">
+              Comprobante de transacción comercial
             </DialogDescription>
           </DialogHeader>
           {reciboSeleccionado && (
-            <div className="space-y-4">
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h3 className="font-semibold text-lg mb-3">Información del Recibo</h3>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <span className="text-gray-600">N° Pedido:</span>
-                    <div className="font-medium">{reciboSeleccionado.numeroPedido}</div>
+            <div className="bg-white border-2 border-blue-200 rounded-lg p-8 space-y-6">
+              {/* Header del recibo */}
+              <div className="text-center border-b-2 border-blue-100 pb-4">
+                <h2 className="text-3xl font-bold text-blue-800 mb-2">JH CONTROL</h2>
+                <p className="text-gray-600">Sistema de Gestión Empresarial</p>
+                <div className="mt-3 inline-block bg-blue-100 px-4 py-2 rounded-full">
+                  <span className="text-blue-800 font-semibold">Recibo N° {reciboSeleccionado.numeroPedido}</span>
+                </div>
+              </div>
+
+              {/* Información principal */}
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <span className="text-sm text-gray-500 block">FECHA DE EMISIÓN</span>
+                    <span className="font-bold text-lg">{reciboSeleccionado.fechaEmision}</span>
                   </div>
-                  <div>
-                    <span className="text-gray-600">Fecha de Emisión:</span>
-                    <div className="font-medium">{reciboSeleccionado.fechaEmision}</div>
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <span className="text-sm text-gray-500 block">MÉTODO DE PAGO</span>
+                    <span className="font-bold text-lg">{reciboSeleccionado.metodoPago}</span>
                   </div>
-                  <div>
-                    <span className="text-gray-600">Monto:</span>
-                    <div className="font-medium">{reciboSeleccionado.monto} {reciboSeleccionado.tipoMoneda}</div>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Método de Pago:</span>
-                    <div className="font-medium">{reciboSeleccionado.metodoPago}</div>
-                  </div>
+                </div>
+                <div className="bg-green-50 p-4 rounded-lg text-center border border-green-200">
+                  <span className="text-sm text-green-600 block mb-1">MONTO TOTAL</span>
+                  <span className="text-3xl font-bold text-green-700">
+                    {reciboSeleccionado.monto} {reciboSeleccionado.tipoMoneda}
+                  </span>
                 </div>
               </div>
               
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <h3 className="font-semibold text-lg mb-3">Datos del Cliente</h3>
-                <div className="space-y-2 text-sm">
-                  <div>
-                    <span className="text-gray-600">Nombre:</span>
-                    <div className="font-medium">{reciboSeleccionado.cliente.nombre}</div>
+              {/* Información del cliente */}
+              <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
+                <h3 className="text-xl font-bold text-blue-800 mb-4 border-b border-blue-200 pb-2">
+                  DATOS DEL CLIENTE
+                </h3>
+                <div className="grid grid-cols-1 gap-3">
+                  <div className="flex">
+                    <span className="text-blue-600 font-medium w-24">Nombre:</span>
+                    <span className="font-semibold">{reciboSeleccionado.cliente.nombre}</span>
                   </div>
-                  <div>
-                    <span className="text-gray-600">Contacto:</span>
-                    <div className="font-medium">{reciboSeleccionado.cliente.contacto}</div>
+                  <div className="flex">
+                    <span className="text-blue-600 font-medium w-24">Contacto:</span>
+                    <span className="font-semibold">{reciboSeleccionado.cliente.contacto}</span>
                   </div>
-                  <div>
-                    <span className="text-gray-600">Dirección:</span>
-                    <div className="font-medium">{reciboSeleccionado.cliente.direccion}</div>
+                  <div className="flex">
+                    <span className="text-blue-600 font-medium w-24">Dirección:</span>
+                    <span className="font-semibold">{reciboSeleccionado.cliente.direccion}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex justify-center pt-4">
-                <Badge 
-                  variant={
-                    reciboSeleccionado.estado === 'pagado' ? 'secondary' : 
-                    reciboSeleccionado.estado === 'cancelado' ? 'destructive' : 'default'
-                  }
-                  className="text-base px-4 py-2"
-                >
-                  Estado: {reciboSeleccionado.estado === 'pagado' ? 'Pagado' : 
-                           reciboSeleccionado.estado === 'cancelado' ? 'Cancelado' : 'Pendiente'}
-                </Badge>
+              {/* Estado del recibo */}
+              <div className="text-center pt-4 border-t-2 border-gray-100">
+                <div className="inline-block">
+                  <Badge 
+                    variant={
+                      reciboSeleccionado.estado === 'pagado' ? 'secondary' : 
+                      reciboSeleccionado.estado === 'cancelado' ? 'destructive' : 'default'
+                    }
+                    className="text-lg px-6 py-2"
+                  >
+                    ESTADO: {reciboSeleccionado.estado === 'pagado' ? 'PAGADO' : 
+                             reciboSeleccionado.estado === 'cancelado' ? 'CANCELADO' : 'PENDIENTE'}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="text-center text-sm text-gray-500 pt-4 border-t border-gray-200">
+                <p>Este es un documento generado automáticamente por JH Control</p>
+                <p className="mt-1">Para consultas: contacto@jhcontrol.com</p>
               </div>
             </div>
           )}
