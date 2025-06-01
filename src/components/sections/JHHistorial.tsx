@@ -55,13 +55,23 @@ const JHHistorial = () => {
   const [isDetalleOpen, setIsDetalleOpen] = useState(false);
 
   useEffect(() => {
-    const recibosGuardados = JSON.parse(localStorage.getItem('jhRecibos') || '[]');
-    setRecibos(recibosGuardados);
+    const recibosGuardados = localStorage.getItem('jhRecibos');
+    if (recibosGuardados) {
+      try {
+        const parsedRecibos = JSON.parse(recibosGuardados);
+        setRecibos(Array.isArray(parsedRecibos) ? parsedRecibos : []);
+      } catch (error) {
+        console.error('Error parsing recibos:', error);
+        setRecibos([]);
+      }
+    }
   }, []);
 
   const recibosFiltrados = recibos.filter(recibo => {
-    const coincideTexto = recibo.numeroPedido.includes(filtro) ||
-                         recibo.cliente.nombre.toLowerCase().includes(filtro.toLowerCase());
+    if (!recibo) return false;
+    
+    const coincideTexto = recibo.numeroPedido?.includes(filtro) ||
+                         recibo.cliente?.nombre?.toLowerCase().includes(filtro.toLowerCase());
     
     const coincideEstado = filtroEstado === 'todos' || recibo.estado === filtroEstado;
     
@@ -71,6 +81,10 @@ const JHHistorial = () => {
   const verDetalle = (recibo: Recibo) => {
     setReciboSeleccionado(recibo);
     setIsDetalleOpen(true);
+  };
+
+  const formatCurrency = (amount: number, currency: string = 'USD') => {
+    return `$${amount.toFixed(2)} ${currency}`;
   };
 
   return (
@@ -104,7 +118,7 @@ const JHHistorial = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-green-800">
-              ${recibos.reduce((acc, r) => acc + r.total, 0).toFixed(2)}
+              {formatCurrency(recibos.reduce((acc, r) => acc + (r.total || 0), 0))}
             </div>
             <p className="text-xs text-green-600 mt-1">valor total facturado</p>
           </CardContent>
@@ -118,6 +132,7 @@ const JHHistorial = () => {
           <CardContent>
             <div className="text-3xl font-bold text-purple-800">
               {recibos.filter(r => {
+                if (!r.fechaEmision) return false;
                 const fechaRecibo = new Date(r.fechaEmision);
                 const ahora = new Date();
                 return fechaRecibo.getMonth() === ahora.getMonth() && 
@@ -160,7 +175,7 @@ const JHHistorial = () => {
         </CardContent>
       </Card>
 
-      {/* Tabla de recibos usando componentes shadcn/ui */}
+      {/* Tabla de recibos */}
       <Card className="shadow-xl">
         <CardHeader className="bg-gradient-to-r from-green-600 to-blue-600 text-white">
           <CardTitle className="text-xl">Listado de Recibos ({recibosFiltrados.length})</CardTitle>
@@ -183,20 +198,19 @@ const JHHistorial = () => {
                   recibosFiltrados.map((recibo, index) => (
                     <TableRow 
                       key={recibo.id} 
-                      className="hover:bg-gradient-to-r hover:from-green-50 hover:to-blue-50 transition-all duration-200 animate-fade-in"
-                      style={{ animationDelay: `${index * 0.05}s` }}
+                      className="hover:bg-gradient-to-r hover:from-green-50 hover:to-blue-50 transition-all duration-200"
                     >
                       <TableCell className="font-medium text-blue-600">#{recibo.numeroPedido}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <User className="w-4 h-4 text-gray-400" />
-                          <span className="font-medium">{recibo.cliente.nombre}</span>
+                          <span className="font-medium">{recibo.cliente?.nombre || 'N/A'}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-gray-600">{recibo.fechaEmision}</TableCell>
+                      <TableCell className="text-gray-600">{recibo.fechaEmision || 'N/A'}</TableCell>
                       <TableCell>
                         <Badge variant="secondary" className="bg-green-100 text-green-800">
-                          ${recibo.total.toFixed(2)} {recibo.tipoMoneda}
+                          {formatCurrency(recibo.total || 0, recibo.tipoMoneda)}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -237,43 +251,43 @@ const JHHistorial = () => {
         </CardContent>
       </Card>
 
-      {/* Dialog para ver detalle del recibo - Versión responsive y mejorada */}
+      {/* Dialog para ver detalle del recibo */}
       <Dialog open={isDetalleOpen} onOpenChange={setIsDetalleOpen}>
-        <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl w-[95vw] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold text-center mb-4">Detalle del Recibo</DialogTitle>
           </DialogHeader>
           {reciboSeleccionado && (
-            <div className="bg-white p-3 md:p-6 text-xs md:text-sm">
+            <div className="bg-white p-4 text-sm space-y-4">
               {/* Header del recibo */}
-              <div className="text-center mb-4 md:mb-6 pb-3 md:pb-4 border-b-2 border-gray-200">
-                <h1 className="text-lg md:text-2xl font-bold text-blue-600 mb-2">JH CONTROL</h1>
-                <p className="text-gray-600 text-xs md:text-sm">Sistema de Gestión Empresarial</p>
-                <div className="mt-2 md:mt-3">
-                  <span className="bg-blue-100 text-blue-800 px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-semibold">
+              <div className="text-center pb-4 border-b-2 border-gray-200">
+                <h1 className="text-xl font-bold text-blue-600 mb-2">JH CONTROL</h1>
+                <p className="text-gray-600 text-sm">Sistema de Gestión Empresarial</p>
+                <div className="mt-3">
+                  <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-semibold">
                     RECIBO #{reciboSeleccionado.numeroPedido}
                   </span>
                 </div>
               </div>
 
               {/* Información de fechas y estado */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mb-4 md:mb-6 text-xs">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
                 <div className="flex items-center gap-2">
-                  <Calendar className="w-3 md:w-4 h-3 md:h-4 text-blue-500" />
+                  <Calendar className="w-4 h-4 text-blue-500" />
                   <div>
                     <p className="font-semibold text-gray-700">Fecha de Emisión</p>
                     <p className="text-gray-600">{reciboSeleccionado.fechaEmision}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Clock className="w-3 md:w-4 h-3 md:h-4 text-orange-500" />
+                  <Clock className="w-4 h-4 text-orange-500" />
                   <div>
                     <p className="font-semibold text-gray-700">Vencimiento</p>
                     <p className="text-gray-600">{reciboSeleccionado.fechaVencimiento}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className={`w-2 md:w-3 h-2 md:h-3 rounded-full ${
+                  <div className={`w-3 h-3 rounded-full ${
                     reciboSeleccionado.estado === 'pagado' ? 'bg-green-500' : 
                     reciboSeleccionado.estado === 'vencido' ? 'bg-red-500' : 'bg-yellow-500'
                   }`}></div>
@@ -285,98 +299,104 @@ const JHHistorial = () => {
               </div>
 
               {/* Información del cliente */}
-              <div className="bg-gray-50 p-3 md:p-4 rounded-lg mb-4 md:mb-6">
-                <h3 className="font-bold text-gray-800 mb-2 md:mb-3 flex items-center gap-2 text-sm">
-                  <User className="w-3 md:w-4 h-3 md:h-4" />
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2 text-sm">
+                  <User className="w-4 h-4" />
                   Información del Cliente
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3 text-xs">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                   <div>
                     <p className="font-semibold text-gray-700">Nombre:</p>
-                    <p className="text-gray-600">{reciboSeleccionado.cliente.nombre}</p>
+                    <p className="text-gray-600">{reciboSeleccionado.cliente?.nombre}</p>
                   </div>
                   <div className="flex items-center gap-1">
                     <Mail className="w-3 h-3 text-gray-500" />
                     <div>
                       <p className="font-semibold text-gray-700">Email:</p>
-                      <p className="text-gray-600 break-all">{reciboSeleccionado.cliente.email}</p>
+                      <p className="text-gray-600 break-all">{reciboSeleccionado.cliente?.email}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
                     <Phone className="w-3 h-3 text-gray-500" />
                     <div>
                       <p className="font-semibold text-gray-700">Teléfono:</p>
-                      <p className="text-gray-600">{reciboSeleccionado.cliente.telefono}</p>
+                      <p className="text-gray-600">{reciboSeleccionado.cliente?.telefono}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
                     <MapPin className="w-3 h-3 text-gray-500" />
                     <div>
                       <p className="font-semibold text-gray-700">Dirección:</p>
-                      <p className="text-gray-600">{reciboSeleccionado.cliente.direccion}</p>
+                      <p className="text-gray-600">{reciboSeleccionado.cliente?.direccion}</p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Detalles de items usando shadcn Table */}
-              <div className="mb-4 md:mb-6">
-                <h3 className="font-bold text-gray-800 mb-2 md:mb-3 text-sm">Detalle de Servicios/Productos</h3>
+              {/* Detalles de items */}
+              <div>
+                <h3 className="font-bold text-gray-800 mb-3 text-sm">Detalle de Servicios/Productos</h3>
                 <div className="border rounded-lg overflow-hidden">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-gray-100">
-                        <TableHead className="text-xs md:text-sm font-semibold">Descripción</TableHead>
-                        <TableHead className="text-center text-xs md:text-sm font-semibold w-16">Cant.</TableHead>
-                        <TableHead className="text-right text-xs md:text-sm font-semibold w-20">Precio</TableHead>
-                        <TableHead className="text-right text-xs md:text-sm font-semibold w-20">Total</TableHead>
+                        <TableHead className="text-xs font-semibold">Descripción</TableHead>
+                        <TableHead className="text-center text-xs font-semibold w-16">Cant.</TableHead>
+                        <TableHead className="text-right text-xs font-semibold w-20">Precio</TableHead>
+                        <TableHead className="text-right text-xs font-semibold w-20">Total</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {reciboSeleccionado.items.map((item, index) => (
+                      {reciboSeleccionado.items?.map((item, index) => (
                         <TableRow key={index}>
-                          <TableCell className="text-xs md:text-sm">{item.descripcion}</TableCell>
-                          <TableCell className="text-center text-xs md:text-sm">{item.cantidad}</TableCell>
-                          <TableCell className="text-right text-xs md:text-sm">${item.precio.toFixed(2)}</TableCell>
-                          <TableCell className="text-right font-semibold text-xs md:text-sm">${item.total.toFixed(2)}</TableCell>
+                          <TableCell className="text-xs">{item.descripcion}</TableCell>
+                          <TableCell className="text-center text-xs">{item.cantidad}</TableCell>
+                          <TableCell className="text-right text-xs">${item.precio?.toFixed(2)}</TableCell>
+                          <TableCell className="text-right font-semibold text-xs">${item.total?.toFixed(2)}</TableCell>
                         </TableRow>
-                      ))}
+                      )) || (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center text-xs text-gray-500">
+                            No hay items registrados
+                          </TableCell>
+                        </TableRow>
+                      )}
                     </TableBody>
                   </Table>
                 </div>
               </div>
 
               {/* Totales */}
-              <div className="bg-blue-50 p-3 md:p-4 rounded-lg mb-4 md:mb-6">
-                <div className="space-y-1 md:space-y-2 text-xs md:text-sm">
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-700">Subtotal:</span>
-                    <span className="font-semibold">${reciboSeleccionado.subtotal.toFixed(2)}</span>
+                    <span className="font-semibold">${reciboSeleccionado.subtotal?.toFixed(2) || '0.00'}</span>
                   </div>
                   {reciboSeleccionado.descuento > 0 && (
                     <div className="flex justify-between text-green-600">
                       <span>Descuento:</span>
-                      <span>-${reciboSeleccionado.descuento.toFixed(2)}</span>
+                      <span>-${reciboSeleccionado.descuento?.toFixed(2)}</span>
                     </div>
                   )}
                   <hr className="border-gray-300" />
-                  <div className="flex justify-between text-base md:text-lg font-bold text-blue-600">
+                  <div className="flex justify-between text-lg font-bold text-blue-600">
                     <span>TOTAL:</span>
-                    <span>${reciboSeleccionado.total.toFixed(2)} {reciboSeleccionado.tipoMoneda}</span>
+                    <span>{formatCurrency(reciboSeleccionado.total || 0, reciboSeleccionado.tipoMoneda)}</span>
                   </div>
                 </div>
               </div>
 
               {/* Notas adicionales */}
               {reciboSeleccionado.notas && (
-                <div className="bg-yellow-50 p-3 md:p-4 rounded-lg mb-3 md:mb-4">
+                <div className="bg-yellow-50 p-4 rounded-lg">
                   <h4 className="font-semibold text-gray-800 mb-2 text-sm">Notas:</h4>
                   <p className="text-gray-700 text-xs">{reciboSeleccionado.notas}</p>
                 </div>
               )}
 
               {/* Footer */}
-              <div className="text-center pt-4 md:pt-6 border-t border-gray-200">
+              <div className="text-center pt-4 border-t border-gray-200">
                 <p className="text-xs text-gray-500">
                   Gracias por su confianza - JH Control
                 </p>
