@@ -91,8 +91,8 @@ const JHCuentasPorCobrar = () => {
       return;
     }
 
-    const fechaCreacion = new Date().toISOString().split('T')[0];
-    const fechaVencimiento = calcularFechaVencimiento(fechaCreacion);
+    const fechaCreacion = new Date().toLocaleDateString('es-ES');
+    const fechaVencimiento = calcularFechaVencimiento(new Date().toISOString().split('T')[0]);
 
     const cuenta: CuentaPorCobrar = {
       id: Date.now().toString(),
@@ -280,7 +280,7 @@ const JHCuentasPorCobrar = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-emerald-800">${montoTotalUSD.toFixed(2)}</div>
-            <div className="text-lg font-semibold text-emerald-700">{tasaCambio?.moneda || 'BS'} {montoTotalBS.toFixed(2)}</div>
+            <div className="text-sm text-emerald-600">{tasaCambio?.moneda || 'BS'} {montoTotalBS.toFixed(2)}</div>
             <p className="text-xs text-emerald-600 mt-1">pendiente de cobro</p>
           </CardContent>
         </Card>
@@ -354,6 +354,7 @@ const JHCuentasPorCobrar = () => {
                   <th className="text-left p-4 font-semibold text-gray-700">Concepto</th>
                   <th className="text-left p-4 font-semibold text-gray-700">Monto USD</th>
                   <th className="text-left p-4 font-semibold text-gray-700">Monto {tasaCambio?.moneda || 'BS'}</th>
+                  <th className="text-left p-4 font-semibold text-gray-700">Fecha Creación</th>
                   <th className="text-left p-4 font-semibold text-gray-700">Vencimiento</th>
                   <th className="text-left p-4 font-semibold text-gray-700">Estado</th>
                   <th className="text-left p-4 font-semibold text-gray-700">Acciones</th>
@@ -385,6 +386,7 @@ const JHCuentasPorCobrar = () => {
                         {tasaCambio?.moneda || 'BS'} {convertirMoneda(cuenta.monto, cuenta.moneda, 'BS').toFixed(2)}
                       </Badge>
                     </td>
+                    <td className="p-4 text-sm">{cuenta.fechaCreacion}</td>
                     <td className="p-4 text-sm">{cuenta.fechaVencimiento}</td>
                     <td className="p-4">
                       <Badge 

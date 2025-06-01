@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +27,7 @@ interface Tarea {
   cliente: string;
   fechaCreacion: string;
   monto: string;
+  tipoMoneda: 'USD' | 'BS';
   completada: boolean;
   descripcion?: string;
 }
@@ -42,17 +42,24 @@ const JHTareas = () => {
   const [tareaEditando, setTareaEditando] = useState<Tarea | null>(null);
   const [telefono, setTelefono] = useState('');
   const [tareasSeleccionadas, setTareasSeleccionadas] = useState<string[]>([]);
+  const [tasaCambio, setTasaCambio] = useState<{tasa: string, moneda: string} | null>(null);
 
   const [nuevaTarea, setNuevaTarea] = useState({
     nombre: '',
     cliente: '',
     monto: '',
+    tipoMoneda: 'USD' as 'USD' | 'BS',
     descripcion: ''
   });
 
   useEffect(() => {
     const tareasGuardadas = JSON.parse(localStorage.getItem('jhTareas') || '[]');
     setTareas(tareasGuardadas);
+    
+    const tasa = localStorage.getItem('tasaCambio');
+    if (tasa) {
+      setTasaCambio(JSON.parse(tasa));
+    }
   }, []);
 
   const guardarTareas = (nuevasTareas: Tarea[]) => {
@@ -60,11 +67,26 @@ const JHTareas = () => {
     setTareas(nuevasTareas);
   };
 
+  const convertirMoneda = (monto: string, monedaOrigen: 'USD' | 'BS', monedaDestino: 'USD' | 'BS') => {
+    if (!tasaCambio || monedaOrigen === monedaDestino) return parseFloat(monto) || 0;
+    
+    const valor = parseFloat(monto) || 0;
+    const tasa = parseFloat(tasaCambio.tasa);
+    
+    if (monedaOrigen === 'USD' && monedaDestino === 'BS') {
+      return valor * tasa;
+    } else if (monedaOrigen === 'BS' && monedaDestino === 'USD') {
+      return valor / tasa;
+    }
+    
+    return valor;
+  };
+
   const crearTarea = () => {
-    if (!nuevaTarea.nombre || !nuevaTarea.cliente || !nuevaTarea.monto) {
+    if (!nuevaTarea.nombre || !nuevaTarea.cliente) {
       toast({
         title: "Error",
-        description: "Por favor complete los campos obligatorios",
+        description: "Por favor complete los campos obligatorios (nombre y cliente)",
         variant: "destructive",
       });
       return;
@@ -74,8 +96,9 @@ const JHTareas = () => {
       id: Date.now().toString(),
       nombre: nuevaTarea.nombre,
       cliente: nuevaTarea.cliente,
-      fechaCreacion: new Date().toLocaleDateString(),
-      monto: nuevaTarea.monto,
+      fechaCreacion: new Date().toLocaleDateString('es-ES'),
+      monto: nuevaTarea.monto || '0',
+      tipoMoneda: nuevaTarea.tipoMoneda,
       completada: false,
       descripcion: nuevaTarea.descripcion
     };
@@ -88,7 +111,7 @@ const JHTareas = () => {
       description: `La tarea "${tarea.nombre}" ha sido creada exitosamente`,
     });
 
-    setNuevaTarea({ nombre: '', cliente: '', monto: '', descripcion: '' });
+    setNuevaTarea({ nombre: '', cliente: '', monto: '', tipoMoneda: 'USD', descripcion: '' });
     setIsCrearOpen(false);
   };
 
@@ -148,7 +171,7 @@ const JHTareas = () => {
     tareasParaCompartir.forEach((tarea, index) => {
       mensaje += `${index + 1}. ${tarea.nombre}\n`;
       mensaje += `   Cliente: ${tarea.cliente}\n`;
-      mensaje += `   Monto: $${tarea.monto}\n`;
+      mensaje += `   Monto: ${tarea.monto} ${tarea.tipoMoneda}\n`;
       mensaje += `   Estado: ${tarea.completada ? 'Completada' : 'Pendiente'}\n\n`;
     });
 
@@ -177,7 +200,9 @@ const JHTareas = () => {
   });
 
   const tareasPendientes = tareas.filter(t => !t.completada);
-  const montoTotalPendiente = tareasPendientes.reduce((acc, t) => acc + parseFloat(t.monto), 0);
+  const montoTotalPendienteUSD = tareasPendientes.reduce((acc, t) => {
+    return acc + convertirMoneda(t.monto, t.tipoMoneda, 'USD');
+  }, 0);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -219,16 +244,30 @@ const JHTareas = () => {
                   placeholder="Nombre del cliente"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="monto">Monto *</Label>
-                <Input
-                  id="monto"
-                  type="number"
-                  step="0.01"
-                  value={nuevaTarea.monto}
-                  onChange={(e) => setNuevaTarea({...nuevaTarea, monto: e.target.value})}
-                  placeholder="0.00"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="monto">Monto (opcional)</Label>
+                  <Input
+                    id="monto"
+                    type="number"
+                    step="0.01"
+                    value={nuevaTarea.monto}
+                    onChange={(e) => setNuevaTarea({...nuevaTarea, monto: e.target.value})}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tipoMoneda">Moneda</Label>
+                  <Select value={nuevaTarea.tipoMoneda} onValueChange={(value: 'USD' | 'BS') => setNuevaTarea({...nuevaTarea, tipoMoneda: value})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="USD">USD (Dólares)</SelectItem>
+                      <SelectItem value="BS">{tasaCambio?.moneda || 'BS'} (Moneda Local)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="descripcion">Descripción</Label>
@@ -277,7 +316,7 @@ const JHTareas = () => {
             <DollarSign className="w-4 h-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">${montoTotalPendiente.toFixed(2)}</div>
+            <div className="text-2xl font-bold text-green-600">${montoTotalPendienteUSD.toFixed(2)}</div>
             <p className="text-xs text-gray-500">total por cobrar</p>
           </CardContent>
         </Card>
@@ -393,8 +432,9 @@ const JHTareas = () => {
                   <th className="text-left p-2">Estado</th>
                   <th className="text-left p-2">Tarea</th>
                   <th className="text-left p-2">Cliente</th>
-                  <th className="text-left p-2">Fecha</th>
-                  <th className="text-left p-2">Monto</th>
+                  <th className="text-left p-2">Fecha Creación</th>
+                  <th className="text-left p-2">Monto USD</th>
+                  <th className="text-left p-2">Monto {tasaCambio?.moneda || 'BS'}</th>
                   <th className="text-left p-2">Acciones</th>
                 </tr>
               </thead>
@@ -438,7 +478,12 @@ const JHTareas = () => {
                     <td className="p-2 text-sm text-gray-600">{tarea.fechaCreacion}</td>
                     <td className="p-2">
                       <Badge variant={tarea.completada ? "secondary" : "default"}>
-                        ${tarea.monto}
+                        ${convertirMoneda(tarea.monto, tarea.tipoMoneda, 'USD').toFixed(2)}
+                      </Badge>
+                    </td>
+                    <td className="p-2">
+                      <Badge variant="outline">
+                        {tasaCambio?.moneda || 'BS'} {convertirMoneda(tarea.monto, tarea.tipoMoneda, 'BS').toFixed(2)}
                       </Badge>
                     </td>
                     <td className="p-2">
@@ -504,15 +549,29 @@ const JHTareas = () => {
                   onChange={(e) => setTareaEditando({...tareaEditando, cliente: e.target.value})}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-monto">Monto</Label>
-                <Input
-                  id="edit-monto"
-                  type="number"
-                  step="0.01"
-                  value={tareaEditando.monto}
-                  onChange={(e) => setTareaEditando({...tareaEditando, monto: e.target.value})}
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-monto">Monto</Label>
+                  <Input
+                    id="edit-monto"
+                    type="number"
+                    step="0.01"
+                    value={tareaEditando.monto}
+                    onChange={(e) => setTareaEditando({...tareaEditando, monto: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-tipoMoneda">Moneda</Label>
+                  <Select value={tareaEditando.tipoMoneda} onValueChange={(value: 'USD' | 'BS') => setTareaEditando({...tareaEditando, tipoMoneda: value})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="USD">USD (Dólares)</SelectItem>
+                      <SelectItem value="BS">{tasaCambio?.moneda || 'BS'} (Moneda Local)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-descripcion">Descripción</Label>
