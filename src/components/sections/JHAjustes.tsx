@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,9 +16,12 @@ import {
   Upload,
   Camera,
   Database,
-  Shield
+  Shield,
+  FileText,
+  FileSpreadsheet
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { exportToWord, exportToExcel, exportToTxt } from '@/components/ExportImportUtils';
 
 interface PerfilAdmin {
   nombre: string;
@@ -42,6 +44,7 @@ const JHAjustes = () => {
 
   const [isReporteOpen, setIsReporteOpen] = useState(false);
   const [tipoReporte, setTipoReporte] = useState('completo');
+  const [formatoExportacion, setFormatoExportacion] = useState('txt');
 
   useEffect(() => {
     const perfilGuardado = localStorage.getItem('jhPerfilAdmin');
@@ -77,60 +80,71 @@ const JHAjustes = () => {
       cuentasPorCobrar: JSON.parse(localStorage.getItem('jhCuentasPorCobrar') || '[]'),
       cuentasPorPagar: JSON.parse(localStorage.getItem('jhCuentasPorPagar') || '[]'),
       configuracion: JSON.parse(localStorage.getItem('jhConfigFacturacion') || '{}'),
-      perfil: JSON.parse(localStorage.getItem('jhPerfilAdmin') || '{}')
+      perfil: JSON.parse(localStorage.getItem('jhPerfilAdmin') || '{}'),
+      tasaCambio: JSON.parse(localStorage.getItem('jhConfigFacturacion') || '{}').tasaCambio || 36.5
     };
 
-    let reporte = '';
-    const fecha = new Date().toLocaleDateString();
+    // Filtrar datos según el tipo de reporte
+    let datosReporte = {};
+    const fecha = new Date().toLocaleDateString('es-ES').replace(/\//g, '-');
+    let nombreArchivo = '';
 
     switch (tipoReporte) {
       case 'completo':
-        reporte = `REPORTE COMPLETO DEL SISTEMA JH CONTROL\nFecha: ${fecha}\n\n`;
-        reporte += `=== ESTADÍSTICAS GENERALES ===\n`;
-        reporte += `Total de Tareas: ${datos.tareas.length}\n`;
-        reporte += `Tareas Completadas: ${datos.tareas.filter((t: any) => t.completada).length}\n`;
-        reporte += `Total de Recibos: ${datos.recibos.length}\n`;
-        reporte += `Cuentas por Cobrar: ${datos.cuentasPorCobrar.length}\n`;
-        reporte += `Cuentas por Pagar: ${datos.cuentasPorPagar.length}\n\n`;
-        
-        reporte += `=== RESUMEN FINANCIERO ===\n`;
-        reporte += `Monto Total en Tareas: $${datos.tareas.reduce((acc: number, t: any) => acc + parseFloat(t.monto || 0), 0).toFixed(2)}\n`;
-        reporte += `Monto Total en Recibos: $${datos.recibos.reduce((acc: number, r: any) => acc + parseFloat(r.monto || 0), 0).toFixed(2)}\n\n`;
+        datosReporte = datos;
+        nombreArchivo = `reporte_completo_${fecha}`;
         break;
-        
       case 'financiero':
-        reporte = `REPORTE FINANCIERO - JH CONTROL\nFecha: ${fecha}\n\n`;
-        reporte += `=== INGRESOS ===\n`;
-        datos.recibos.forEach((r: any) => {
-          reporte += `${r.numeroPedido}: ${r.monto} ${r.tipoMoneda} - ${r.cliente.nombre}\n`;
-        });
-        reporte += `\n=== CUENTAS POR COBRAR ===\n`;
-        datos.cuentasPorCobrar.forEach((c: any) => {
-          reporte += `${c.cliente}: $${c.monto} - Vence: ${c.fechaVencimiento}\n`;
-        });
+        datosReporte = {
+          recibos: datos.recibos,
+          cuentasPorCobrar: datos.cuentasPorCobrar,
+          cuentasPorPagar: datos.cuentasPorPagar,
+          tasaCambio: datos.tasaCambio
+        };
+        nombreArchivo = `reporte_financiero_${fecha}`;
         break;
-        
       case 'tareas':
-        reporte = `REPORTE DE TAREAS - JH CONTROL\nFecha: ${fecha}\n\n`;
-        datos.tareas.forEach((t: any) => {
-          reporte += `${t.nombre} - Cliente: ${t.cliente} - Monto: $${t.monto} - Estado: ${t.completada ? 'Completada' : 'Pendiente'}\n`;
-        });
+        datosReporte = {
+          tareas: datos.tareas
+        };
+        nombreArchivo = `reporte_tareas_${fecha}`;
         break;
     }
 
-    // Descargar el reporte
-    const blob = new Blob([reporte], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `reporte_${tipoReporte}_${fecha.replace(/\//g, '-')}.txt`;
-    link.click();
-    URL.revokeObjectURL(url);
+    // Exportar según el formato seleccionado
+    try {
+      switch (formatoExportacion) {
+        case 'word':
+          exportToWord(datosReporte, nombreArchivo);
+          break;
+        case 'excel':
+          exportToExcel(datosReporte, nombreArchivo);
+          break;
+        case 'pdf':
+          // Para PDF usaremos el mismo formato que Word por ahora
+          exportToWord(datosReporte, nombreArchivo + '_pdf');
+          toast({
+            title: "Nota sobre PDF",
+            description: "El archivo se exportó en formato Word. Para convertir a PDF, ábrelo en Word y guárdalo como PDF.",
+          });
+          break;
+        case 'txt':
+        default:
+          exportToTxt(datosReporte, nombreArchivo);
+          break;
+      }
 
-    toast({
-      title: "Reporte generado",
-      description: `El reporte ${tipoReporte} ha sido descargado`,
-    });
+      toast({
+        title: "Reporte generado",
+        description: `El reporte ${tipoReporte} ha sido exportado en formato ${formatoExportacion.toUpperCase()}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Hubo un problema al generar el reporte",
+        variant: "destructive",
+      });
+    }
 
     setIsReporteOpen(false);
   };
@@ -296,15 +310,15 @@ const JHAjustes = () => {
                   <FileDown className="w-6 h-6 text-blue-600" />
                   <div className="text-center">
                     <div className="font-medium">Generar Reporte</div>
-                    <div className="text-xs text-gray-500">Exportar datos en formato texto</div>
+                    <div className="text-xs text-gray-500">Exportar en múltiples formatos</div>
                   </div>
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                   <DialogTitle>Generar Reporte del Sistema</DialogTitle>
                   <DialogDescription>
-                    Seleccione el tipo de reporte que desea generar
+                    Seleccione el tipo de reporte y formato de exportación
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
@@ -349,6 +363,73 @@ const JHAjustes = () => {
                       </div>
                     </div>
                   </div>
+
+                  <div className="space-y-2">
+                    <Label>Formato de Exportación</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="radio"
+                          id="word"
+                          name="formatoExportacion"
+                          value="word"
+                          checked={formatoExportacion === 'word'}
+                          onChange={(e) => setFormatoExportacion(e.target.value)}
+                          className="rounded"
+                        />
+                        <label htmlFor="word" className="text-sm flex items-center gap-1">
+                          <FileText className="w-3 h-3" />
+                          Word
+                        </label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="radio"
+                          id="pdf"
+                          name="formatoExportacion"
+                          value="pdf"
+                          checked={formatoExportacion === 'pdf'}
+                          onChange={(e) => setFormatoExportacion(e.target.value)}
+                          className="rounded"
+                        />
+                        <label htmlFor="pdf" className="text-sm flex items-center gap-1">
+                          <FileText className="w-3 h-3" />
+                          PDF
+                        </label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="radio"
+                          id="excel"
+                          name="formatoExportacion"
+                          value="excel"
+                          checked={formatoExportacion === 'excel'}
+                          onChange={(e) => setFormatoExportacion(e.target.value)}
+                          className="rounded"
+                        />
+                        <label htmlFor="excel" className="text-sm flex items-center gap-1">
+                          <FileSpreadsheet className="w-3 h-3" />
+                          Excel
+                        </label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="radio"
+                          id="txt"
+                          name="formatoExportacion"
+                          value="txt"
+                          checked={formatoExportacion === 'txt'}
+                          onChange={(e) => setFormatoExportacion(e.target.value)}
+                          className="rounded"
+                        />
+                        <label htmlFor="txt" className="text-sm flex items-center gap-1">
+                          <FileText className="w-3 h-3" />
+                          TXT
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="flex gap-2">
                     <Button
                       variant="outline"

@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Edit, Trash2, CreditCard, Calendar } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, CreditCard, Calendar, DollarSign } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface CuentaPorPagar {
@@ -38,9 +38,18 @@ const JHCuentasPorPagar = () => {
     descripcion: ''
   });
 
+  // Obtener tasa de cambio desde configuración
+  const [tasaCambio, setTasaCambio] = useState(36.5);
+
   useEffect(() => {
     const cuentasGuardadas = JSON.parse(localStorage.getItem('jhCuentasPorPagar') || '[]');
     setCuentas(cuentasGuardadas);
+
+    // Cargar tasa de cambio
+    const config = JSON.parse(localStorage.getItem('jhConfigFacturacion') || '{}');
+    if (config.tasaCambio) {
+      setTasaCambio(parseFloat(config.tasaCambio));
+    }
   }, []);
 
   const guardarCuentas = (nuevasCuentas: CuentaPorPagar[]) => {
@@ -129,7 +138,29 @@ const JHCuentasPorPagar = () => {
     return coincideTexto && coincideEstado;
   });
 
-  const montoTotal = cuentas.filter(c => c.estado !== 'pagado').reduce((acc, c) => acc + parseFloat(c.monto), 0);
+  // Calcular totales por moneda
+  const cuentasPendientes = cuentas.filter(c => c.estado !== 'pagado');
+  const totalUSD = cuentasPendientes
+    .filter(c => c.tipoMoneda === 'USD')
+    .reduce((acc, c) => acc + parseFloat(c.monto), 0);
+  
+  const totalBS = cuentasPendientes
+    .filter(c => c.tipoMoneda === 'BS')
+    .reduce((acc, c) => acc + parseFloat(c.monto), 0);
+
+  // Función para convertir montos
+  const convertirMonto = (monto: string, tipoMoneda: string, aMoneda: 'USD' | 'BS') => {
+    const valor = parseFloat(monto);
+    if (tipoMoneda === aMoneda) return valor;
+    
+    if (tipoMoneda === 'USD' && aMoneda === 'BS') {
+      return valor * tasaCambio;
+    } else if (tipoMoneda === 'BS' && aMoneda === 'USD') {
+      return valor / tasaCambio;
+    }
+    
+    return valor;
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -191,7 +222,6 @@ const JHCuentasPorPagar = () => {
                   <SelectContent>
                     <SelectItem value="USD">Dólares (USD)</SelectItem>
                     <SelectItem value="BS">Bolívares (BS)</SelectItem>
-                    <SelectItem value="EUR">Euros (EUR)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -225,28 +255,38 @@ const JHCuentasPorPagar = () => {
       </div>
 
       {/* Tarjetas de resumen */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="animate-scale-in">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total por Pagar</CardTitle>
-            <CreditCard className="w-4 h-4 text-red-600" />
+            <CardTitle className="text-sm font-medium">Total por Pagar (USD)</CardTitle>
+            <DollarSign className="w-4 h-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">${montoTotal.toFixed(2)}</div>
-            <p className="text-xs text-gray-500">pendiente de pago</p>
+            <div className="text-2xl font-bold text-green-600">${totalUSD.toFixed(2)}</div>
+            <p className="text-xs text-gray-500">pendiente en dólares</p>
+          </CardContent>
+        </Card>
+        <Card className="animate-scale-in" style={{ animationDelay: '0.05s' }}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total por Pagar (BS)</CardTitle>
+            <CreditCard className="w-4 h-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">Bs. {totalBS.toFixed(2)}</div>
+            <p className="text-xs text-gray-500">pendiente en bolívares</p>
           </CardContent>
         </Card>
         <Card className="animate-scale-in" style={{ animationDelay: '0.1s' }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total de Cuentas</CardTitle>
-            <Calendar className="w-4 h-4 text-blue-600" />
+            <Calendar className="w-4 h-4 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{cuentas.length}</div>
+            <div className="text-2xl font-bold text-purple-600">{cuentas.length}</div>
             <p className="text-xs text-gray-500">registradas en el sistema</p>
           </CardContent>
         </Card>
-        <Card className="animate-scale-in" style={{ animationDelay: '0.2s' }}>
+        <Card className="animate-scale-in" style={{ animationDelay: '0.15s' }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Cuentas Pendientes</CardTitle>
             <CreditCard className="w-4 h-4 text-orange-600" />
@@ -301,8 +341,9 @@ const JHCuentasPorPagar = () => {
                 <tr className="border-b">
                   <th className="text-left p-2">Proveedor</th>
                   <th className="text-left p-2">Concepto</th>
-                  <th className="text-left p-2">Monto</th>
-                  <th className="text-left p-2">Fecha Creación</th>
+                  <th className="text-left p-2">Monto Original</th>
+                  <th className="text-left p-2">Equivalencia</th>
+                  <th className="text-left p-2">Fecha</th>
                   <th className="text-left p-2">Estado</th>
                   <th className="text-left p-2">Acciones</th>
                 </tr>
@@ -325,8 +366,17 @@ const JHCuentasPorPagar = () => {
                     </td>
                     <td className="p-2">
                       <Badge variant="default" className="bg-red-100 text-red-800">
-                        {cuenta.monto} {cuenta.tipoMoneda}
+                        {cuenta.tipoMoneda === 'USD' ? '$' : 'Bs. '}{cuenta.monto}
                       </Badge>
+                    </td>
+                    <td className="p-2">
+                      <div className="text-xs text-gray-600">
+                        {cuenta.tipoMoneda === 'USD' ? (
+                          <span>Bs. {convertirMonto(cuenta.monto, cuenta.tipoMoneda, 'BS').toFixed(2)}</span>
+                        ) : (
+                          <span>${convertirMonto(cuenta.monto, cuenta.tipoMoneda, 'USD').toFixed(2)}</span>
+                        )}
+                      </div>
                     </td>
                     <td className="p-2 text-sm">{cuenta.fechaCreacion}</td>
                     <td className="p-2">
@@ -432,7 +482,6 @@ const JHCuentasPorPagar = () => {
                   <SelectContent>
                     <SelectItem value="USD">Dólares (USD)</SelectItem>
                     <SelectItem value="BS">Bolívares (BS)</SelectItem>
-                    <SelectItem value="EUR">Euros (EUR)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
